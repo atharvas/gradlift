@@ -59,4 +59,14 @@ class Pose_2D:
             "LAnkle": (keypoints[45], keypoints[46], keypoints[47]),
             "RAnkle": (keypoints[48], keypoints[49], keypoints[50]),
         }
+
+    def normalize_keypoints(self):
+    # TODO: This could operate on the pure json data (see what is passed to Pose_2D on line 26)
+    # OR it could operate on the data after it is stored as a dictionary.       
+        pass
+
+class Pose_3D:
+
+    def __init__(self):
+        pass
                 
