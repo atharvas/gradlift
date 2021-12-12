@@ -72,7 +72,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # run alphapose on the video
-    # estimate_pose(args)
+    estimate_pose(args)
 
     # get height and width of the video in pixels
     file_path = args.video  
@@ -80,8 +80,10 @@ if __name__ == '__main__':
     height = vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
     width = vid.get(cv2.CAP_PROP_FRAME_WIDTH)
 
+    print(height, width)
+
     # create the skeleton object
-    skel = Skeleton("alpha_out/curl_bad.json", V_HEIGHT=height, V_WIDTH=width)
+    skel = Skeleton("alpha_out/curl_good.json", V_HEIGHT=height, V_WIDTH=width)
 
     # evaluate the skeleton for the given lift
     evaluate_exercise(skel, exercise_type="curl")

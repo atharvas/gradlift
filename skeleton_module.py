@@ -41,7 +41,7 @@ class Skeleton:
     }
 
     # @TODO : scatter plot x,y values are unnormalized... Normalize datapoints before operating
-    def __init__(self, json_file, V_HEIGHT=720, V_WIDTH=1080):
+    def __init__(self, json_file, V_HEIGHT=720, V_WIDTH=1080, leg_exersize=False):
         assert os.path.exists(json_file)
         with open(json_file) as fp:
             preds = json.load(fp)
@@ -50,7 +50,7 @@ class Skeleton:
         self.V_WIDTH = V_HEIGHT
         self.preds = preds
         self.max_dist = self.get_max_dist(preds)
-        self.dir_facing = self.reject_outliers(self.get_dir_facing(preds), 2).mean() - (
+        self.dir_facing = self.reject_outliers(self.get_dir_facing(preds, leg_exersize), 2).mean() - (
             np.pi / 2
         )
 
@@ -121,7 +121,7 @@ class Skeleton:
         x2, y2, _ = d[dir + j2]
         return self.edist(x1, y1, x2, y2)
 
-    def get_dir_facing(self, preds):
+    def get_dir_facing(self, preds, leg_exersize=False):
         max_joint_length = self.get_max_dist(preds, average=False)
         process = lambda arr: [
             arr[0] / self.V_WIDTH,
@@ -131,31 +131,40 @@ class Skeleton:
         list_of_joints = list(
             {x[1:] for x in self.gt_labels.keys() if (x[0] in ["L", "R"])}
         )
-        zs = list()
-        for i in range(len(preds)):
-            raw_input = np.array(preds[i]["keypoints"]).reshape(-1, 3)
-            feat_dict = {
-                k: (process(raw_input[v.item()])) for (k, v) in self.gt_labels.items()
-            }
-            x1, y1, _ = feat_dict["L" + "Hip"]
-            x2, y2, _ = feat_dict["L" + "Knee"]
-            projHipKnee = self.edist(x1, y1, x2, y2)
-            trueHipKnee = max_joint_length[("L", "Hip", "Knee")]
-            zDist = ((trueHipKnee ** 2) - (projHipKnee ** 2)) ** 0.5
-            theta1 = np.arctan((zDist) / (projHipKnee))
 
-            x1, y1, _ = feat_dict["R" + "Hip"]
-            x2, y2, _ = feat_dict["R" + "Knee"]
-            projHipKnee = self.edist(x1, y1, x2, y2)
-            trueHipKnee = max_joint_length[("R", "Hip", "Knee")]
-            zDist = ((trueHipKnee ** 2) - (projHipKnee ** 2)) ** 0.5
-            theta2 = np.arctan((zDist) / (projHipKnee))
+        zz = list()
+        for j1, j2 in [('Hip', 'Knee'), ('Elbow', 'Wrist')]:
+            zs = list()
+            for i in range(len(preds)):
+                raw_input = np.array(preds[i]["keypoints"]).reshape(-1, 3)
+                feat_dict = {
+                    k: (process(raw_input[v.item()])) for (k, v) in self.gt_labels.items()
+                }
+                x1, y1, _ = feat_dict["L" + j1]
+                x2, y2, _ = feat_dict["L" + j2]
+                projJointLen = self.edist(x1, y1, x2, y2)
+                trueJointLen = max_joint_length[("L", j1, j2)]
+                zDist = ((trueJointLen ** 2) - (projJointLen ** 2)) ** 0.5
+                theta1 = np.arctan((zDist) / (projJointLen))
 
-            zs.append(((theta1 + theta2) / 2))
+                x1, y1, _ = feat_dict["R" + j1]
+                x2, y2, _ = feat_dict["R" + j2]
+                projJointLen = self.edist(x1, y1, x2, y2)
+                trueJointLen = max_joint_length[("R", j1, j2)]
+                zDist = ((trueJointLen ** 2) - (projJointLen ** 2)) ** 0.5
+                theta2 = np.arctan((zDist) / (projJointLen))
 
-        zs = np.array(zs)
+                zs.append(((theta1 + theta2) / 2))
+            zs = np.array(zs)
+            zz.append(zs)
+            
 
-        return zs
+        if leg_exersize:
+            return zz[0]
+
+        return zz[1]
+
+
 
     def reject_outliers(self, data, m=4.0):
         d = np.abs(data - np.median(data))
@@ -576,10 +585,24 @@ class Skeleton:
             )
             angle_dict[(dir, "Wrist", "Elbow", "Shoulder")] = gamma
 
-        gamma = self.calculate_angle2(
-            frame, dir, lower="Elbow", pivot="Shoulder", upper="Hip"
-        )
-        angle_dict[("C", "Elbow", "Shoulder", "Hip")] = gamma
+        # TODO: multiple calculate_angle fucntions need to be explained or replaced
+        # gets andle between elbow, shoulder, and hip
+        gammaL = self.calculate_angle2(
+            frame, "L", lower="Elbow", pivot="Shoulder", upper="Hip"
+        )            
+        gammaR = self.calculate_angle2(
+            frame, "R", lower="Elbow", pivot="Shoulder", upper="Hip"
+        )   
+        angle_dict[("C", "Elbow", "Shoulder", "Hip")] = (gammaL +  gammaR) / 2
+        
+        # gets angle between knee, hip, and shoulder
+        gammaL = self.calculate_angle(
+            frame, "L", lower="Knee", pivot="Hip", upper="Shoulder"
+        )            
+        gammaR = self.calculate_angle(
+            frame, "R", lower="Knee", pivot="Hip", upper="Shoulder"
+        )   
+        angle_dict[("C", "Knee", "Hip", "Shoulder")] = (gammaL +  gammaR) / 2
 
         angle_dict[("C", "Spine")] = self.calculate_angle(
             frame, "C", lower="Knee", pivot="Hip", upper="Shoulder"
@@ -607,4 +630,3 @@ class Skeleton:
         return np.array(
             [arr[0] / self.V_WIDTH, abs(self.V_HEIGHT - arr[1]) / self.V_HEIGHT, arr[2]]
         )
-

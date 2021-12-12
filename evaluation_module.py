@@ -13,6 +13,7 @@ def evaluate_exercise(skeleton, exercise_type):
 def evaluate_curl(skeleton):
     corrections = ""
     corrections += check_forearm_swing(skeleton) 
+    corrections += check_spine_swing(skeleton)
 
     return corrections
 
@@ -55,5 +56,11 @@ def check_spine_swing(skeleton):
     angles = np.array(angles)
     angles = skeleton.reject_outliers(angles, m=100)
     angles = np.degrees(angles)
-    print("rejected:", angles.min(), angles.max(), angles.mean())
-    if angles.mean() 
+    angle_range = angles.max() - angles.min()
+    
+    print(angles.min(), angles.max())
+    print(angle_range)
+    if angle_range > 10:
+        return "Your spine is moving too much! Try and keep it static."
+    else:
+        return ""
