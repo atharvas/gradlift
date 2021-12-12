@@ -1,6 +1,9 @@
 from alphapose_module import estimate_pose
 import os
 import argparse
+from skeleton_module import Skeleton
+from evaluation_module import evaluate_exercise
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Euclid Trainer')
     parser.add_argument('--cfg', type=str,
@@ -66,3 +69,6 @@ if __name__ == '__main__':
 
     estimate_pose(args)
 
+    skel = Skeleton("res/alphapose-results.json")
+
+    evaluate_exercise(skel, exercise_type="curl")
