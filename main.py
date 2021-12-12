@@ -3,6 +3,10 @@ import os
 import argparse
 from skeleton_module import Skeleton
 from evaluation_module import evaluate_exercise
+import subprocess
+import shlex
+import json
+import cv2
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Euclid Trainer')
@@ -67,8 +71,17 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    estimate_pose(args)
+    # run alphapose on the video
+    # estimate_pose(args)
 
-    skel = Skeleton("res/alphapose-results.json")
+    # get height and width of the video in pixels
+    file_path = args.video  
+    vid = cv2.VideoCapture(file_path)
+    height = vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    width = vid.get(cv2.CAP_PROP_FRAME_WIDTH)
 
+    # create the skeleton object
+    skel = Skeleton("alpha_out/curl_bad.json", V_HEIGHT=height, V_WIDTH=width)
+
+    # evaluate the skeleton for the given lift
     evaluate_exercise(skel, exercise_type="curl")

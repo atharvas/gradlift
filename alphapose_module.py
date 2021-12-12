@@ -22,9 +22,6 @@ from AlphaPose.alphapose.utils.vis import getTime
 from AlphaPose.alphapose.utils.webcam_detector import WebCamDetectionLoader
 from AlphaPose.alphapose.utils.writer import DataWriter
 
-
-
-
 def check_input(args):
     # for wecam
     if args.webcam != -1:
