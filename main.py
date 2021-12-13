@@ -8,7 +8,7 @@ import shlex
 import json
 import cv2
 
-if __name__ == '__main__':
+def parse_args():
     parser = argparse.ArgumentParser(description='Euclid Trainer')
     parser.add_argument('--cfg', type=str,
                         help='experiment configure file name', default="AlphaPose/configs/coco/resnet/256x192_res50_lr1e-3_1x.yaml")
@@ -68,10 +68,18 @@ if __name__ == '__main__':
                         help='track humans in video with PoseFlow', action='store_true', default=False)
     parser.add_argument('--pose_track', dest='pose_track',
                         help='track humans in video with reid', action='store_true', default=False)
+    """----------------------------- EuclidTrainer options -----------------------------"""         
+    parser.add_argument("--exercise", dest='exercise',
+                        help="type of exercise", type=str, default="")
+    return parser.parse_args()
 
-    args = parser.parse_args()
+if __name__ == '__main__':
+    args = parse_args()
+    
+    # Make sure an exercise was specified
+    assert args.exercise in ["squat", "curl"], "Please use --exercise to specify the exercise type.\nOptions are 'curl', 'squat'"
 
-    # run alphapose on the video
+    # run AlphaPose on the video
     estimate_pose(args)
 
     # get height and width of the video in pixels
@@ -80,10 +88,8 @@ if __name__ == '__main__':
     height = vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
     width = vid.get(cv2.CAP_PROP_FRAME_WIDTH)
 
-    print(height, width)
-
     # create the skeleton object
-    skel = Skeleton("alpha_out/curl_good.json", V_HEIGHT=height, V_WIDTH=width)
+    skel = Skeleton("res/alphapose-results.json", V_HEIGHT=height, V_WIDTH=width)
 
     # evaluate the skeleton for the given lift
-    evaluate_exercise(skel, exercise_type="curl")
+    evaluate_exercise(skel, exercise_type=args.exercise)

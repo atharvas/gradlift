@@ -79,6 +79,7 @@ def loop():
         yield n
         n += 1
 
+# main function that will run alphapose for us
 def estimate_pose(args):
 
     cfg = update_config(args.cfg)

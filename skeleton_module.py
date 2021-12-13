@@ -41,7 +41,7 @@ class Skeleton:
     }
 
     # @TODO : scatter plot x,y values are unnormalized... Normalize datapoints before operating
-    def __init__(self, json_file, V_HEIGHT=720, V_WIDTH=1080, leg_exersize=False):
+    def __init__(self, json_file, V_HEIGHT=720, V_WIDTH=1080):
         assert os.path.exists(json_file)
         with open(json_file) as fp:
             preds = json.load(fp)
@@ -50,7 +50,7 @@ class Skeleton:
         self.V_WIDTH = V_HEIGHT
         self.preds = preds
         self.max_dist = self.get_max_dist(preds)
-        self.dir_facing = self.reject_outliers(self.get_dir_facing(preds, leg_exersize), 2).mean() - (
+        self.dir_facing = self.reject_outliers(self.get_dir_facing(preds ), 2).mean() - (
             np.pi / 2
         )
 
@@ -121,7 +121,7 @@ class Skeleton:
         x2, y2, _ = d[dir + j2]
         return self.edist(x1, y1, x2, y2)
 
-    def get_dir_facing(self, preds, leg_exersize=False):
+    def get_dir_facing(self, preds):
         max_joint_length = self.get_max_dist(preds, average=False)
         process = lambda arr: [
             arr[0] / self.V_WIDTH,
@@ -158,9 +158,6 @@ class Skeleton:
             zs = np.array(zs)
             zz.append(zs)
             
-
-        if leg_exersize:
-            return zz[0]
 
         return zz[1]
 
@@ -202,7 +199,7 @@ class Skeleton:
         ax = fig.add_subplot(111)
 
         ax.set_ylim([0, 1])
-        ax.set_xlim([0.5, 1.5])
+        ax.set_xlim([0, 1])
 
         x1, y1, _ = self.feat_dict[0]["LKnee"]
         x2, y2, _ = self.feat_dict[0]["LAnkle"]
@@ -295,7 +292,8 @@ class Skeleton:
         )
 
         plt.show()
-        ani.save("animation_random_data.mpg")
+        writergif = animation.PillowWriter(fps=30)
+        ani.save("animation_random_data.mpg", writer=writergif)
         ani.event_source.stop()
         del ani
 
@@ -538,26 +536,9 @@ class Skeleton:
         xUpper, yUpper, _ = self.feat_dict[frame][dir + upper]
 
         ab = self.edist(xUpper, yUpper, xPivot, yPivot)
-        true_ab = self.max_dist[(upper, pivot)]
+        #true_ab = self.max_dist[(upper, pivot)]
         ac = self.edist(xLower, yLower, xPivot, yPivot)
-        true_ac = self.max_dist[(pivot, lower)]
-        bc = self.edist(xUpper, yUpper, xLower, yLower)
-        beta = self.cosine_law(ab, ac, bc)
-        # gamma = self.cosine_law(true_ab, true_ac, true_bc)
-
-        alpha = self.dir_facing
-        gamma = np.arctan(np.cos(alpha) * np.tan(beta))
-        return gamma
-
-    def calculate_angle2(self, frame, dir, lower, pivot, upper):
-        xLower, yLower, _ = self.feat_dict[frame][dir + lower]
-        xPivot, yPivot, _ = self.feat_dict[frame][dir + pivot]
-        xUpper, yUpper, _ = self.feat_dict[frame][dir + upper]
-
-        ab = self.edist(xUpper, yUpper, xPivot, yPivot)
-        # true_ab = self.max_dist[(upper, pivot)]
-        ac = self.edist(xLower, yLower, xPivot, yPivot)
-        # true_ac = self.max_dist[(pivot, lower)]
+        #true_ac = self.max_dist[(pivot, lower)]
         bc = self.edist(xUpper, yUpper, xLower, yLower)
         beta = self.cosine_law(ab, ac, bc)
         # gamma = self.cosine_law(true_ab, true_ac, true_bc)
@@ -585,15 +566,13 @@ class Skeleton:
             )
             angle_dict[(dir, "Wrist", "Elbow", "Shoulder")] = gamma
 
-        # TODO: multiple calculate_angle fucntions need to be explained or replaced
-        # gets andle between elbow, shoulder, and hip
-        gammaL = self.calculate_angle2(
+        gammaL = self.calculate_angle(
             frame, "L", lower="Elbow", pivot="Shoulder", upper="Hip"
         )            
-        gammaR = self.calculate_angle2(
+        gammaR = self.calculate_angle(
             frame, "R", lower="Elbow", pivot="Shoulder", upper="Hip"
         )   
-        angle_dict[("C", "Elbow", "Shoulder", "Hip")] = (gammaL +  gammaR) / 2
+        angle_dict[("A", "Elbow", "Shoulder", "Hip")] = (gammaL +  gammaR) / 2
         
         # gets angle between knee, hip, and shoulder
         gammaL = self.calculate_angle(
@@ -602,7 +581,15 @@ class Skeleton:
         gammaR = self.calculate_angle(
             frame, "R", lower="Knee", pivot="Hip", upper="Shoulder"
         )   
-        angle_dict[("C", "Knee", "Hip", "Shoulder")] = (gammaL +  gammaR) / 2
+        angle_dict[("A", "Knee", "Hip", "Shoulder")] = (gammaL +  gammaR) / 2
+
+        gammaL = self.calculate_angle(
+            frame, "L", lower="Ankle", pivot="Knee", upper="Hip"
+        )            
+        gammaR = self.calculate_angle(
+            frame, "R", lower="Ankle", pivot="Knee", upper="Hip"
+        )   
+        angle_dict[("A", "Ankle", "Knee", "Hip")] = (gammaL +  gammaR) / 2
 
         angle_dict[("C", "Spine")] = self.calculate_angle(
             frame, "C", lower="Knee", pivot="Hip", upper="Shoulder"
